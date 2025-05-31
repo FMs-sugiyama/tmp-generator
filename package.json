@@ -1,0 +1,15 @@
+{
+  "name": "fact-checker-simulation",
+  "version": "1.0.0",
+  "description": "Feasibility study for team-mirai-volunteer/fact-checker",
+  "main": "index.js",
+  "scripts": {
+    "embed": "bun run scripts/upload.ts",
+    "test": "echo \"No tests specified\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {}
+}

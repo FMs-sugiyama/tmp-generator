@@ -1,0 +1,91 @@
+name: Embed-and-Swap
+on:
+  repository_dispatch:
+    types: [embed]
+  schedule:
+    - cron: '0 */6 * * *'     # フォールバック
+  workflow_dispatch:
+
+jobs:
+  embed:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - uses: actions/checkout@v4    # self
+      - uses: actions/checkout@v4    # checkout policy repo at requested SHA
+        with:
+          repository: FMs-sugiyama/tmp-document
+          ref: ${{ github.event.client_payload.sha || 'main' }}
+          path: policy
+      
+      # Simulate Google Cloud Auth (debug only)
+      - name: Simulate Google Cloud Auth
+        run: |
+          echo "DEBUG: Would authenticate with Google Cloud"
+          echo "DEBUG: GCLOUD_SERVICE_KEY check: ${{ secrets.GCLOUD_SERVICE_KEY != '' }}"
+          echo "DEBUG: PROJECT_ID check: ${{ secrets.PROJECT_ID != '' }}"
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: |
+          echo "DEBUG: Installing dependencies with bun"
+          bun install || echo "DEBUG: bun install failed (expected in minimal setup)"
+      
+      - name: Process documents and create Vector Store
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "DEBUG: Starting app and reading MD files"
+          echo "DEBUG: Policy directory contents:"
+          find policy -name "*.md" -type f | head -10 || echo "No MD files found"
+          
+          echo "DEBUG: OPENAI_API_KEY check: ${{ env.OPENAI_API_KEY != '' }}"
+          
+          # Simulate vector store creation
+          if [ -f "scripts/upload.ts" ]; then
+            echo "DEBUG: Found upload.ts, would run: bunx tsx scripts/upload.ts"
+            # bunx tsx scripts/upload.ts
+            echo "DEBUG: Vector Store creation - OK (simulated)"
+          else
+            echo "DEBUG: upload.ts not found - creating placeholder"
+            mkdir -p scripts config
+            echo '{"id": "vs_simulated_'$(date +%s) '"}' > config/vectorStore.json
+          fi
+          
+          NEW_ID=$(jq -r '.id' config/vectorStore.json 2>/dev/null || echo "vs_debug_$(date +%s)")
+          echo "NEW_VECTOR_STORE_ID=$NEW_ID" >> $GITHUB_ENV
+          echo "DEBUG: New Vector Store ID: $NEW_ID"
+      
+      - name: Simulate Secret Manager Update
+        run: |
+          echo "DEBUG: Would update Secret Manager with ID: $NEW_VECTOR_STORE_ID"
+          echo "DEBUG: Command would be: gcloud secrets versions add VECTOR_STORE_ID --data-file=-"
+          echo "DEBUG: Secret Manager update - OK (simulated)"
+      
+      - name: Simulate old Vector Store deletion
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "DEBUG: Would delete old Vector Store"
+          echo "DEBUG: Would fetch old ID from Secret Manager backup"
+          echo "DEBUG: Would call OpenAI API to delete old store"
+          echo "DEBUG: Old Vector Store deletion - OK (simulated)"
+      
+      - name: Notify success
+        if: success()
+        run: |
+          echo "DEBUG: Would notify Slack of success"
+          echo "DEBUG: Vector Store updated successfully: $NEW_VECTOR_STORE_ID"
+      
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "DEBUG: Would notify Slack of failure"
+          echo "DEBUG: Vector Store update failed. Check workflow logs."
