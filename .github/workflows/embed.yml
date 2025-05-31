@@ -3,8 +3,13 @@ on:
   repository_dispatch:
     types: [embed]
   schedule:
-    - cron: '0 */6 * * *'     # フォールバック
+    - cron: ${{ vars.REBUILD_SCHEDULE || '0 */6 * * *' }} # 設定可能なスケジュール
   workflow_dispatch:
+
+env:
+  POLICY_REPO: ${{ vars.POLICY_REPO || 'FMs-sugiyama/tmp-document' }} # デフォルト: feasibility study用
+  VECTOR_STORE_SECRET: ${{ vars.VECTOR_STORE_SECRET || 'VECTOR_STORE_ID' }}
+  VECTOR_STORE_BACKUP_SECRET: ${{ vars.VECTOR_STORE_BACKUP_SECRET || 'VECTOR_STORE_ID-backup' }}
 
 jobs:
   embed:
@@ -17,9 +22,10 @@ jobs:
       - uses: actions/checkout@v4    # self
       - uses: actions/checkout@v4    # checkout policy repo at requested SHA
         with:
-          repository: FMs-sugiyama/tmp-document
-          ref: ${{ github.event.client_payload.sha || 'main' }}
+          repository: ${{ env.POLICY_REPO }}
+          ref: ${{ github.event.client_payload.sha || vars.POLICY_BRANCH || 'master' }}
           path: policy
+          token: ${{ secrets.POLICY_REPO_PAT || github.token }} # プライベートリポジトリ対応
       
       # Simulate Google Cloud Auth (debug only)
       - name: Simulate Google Cloud Auth
@@ -41,17 +47,18 @@ jobs:
       - name: Process documents and create Vector Store
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          POLICY_DIR: ${{ vars.POLICY_DIR || 'policy' }} # ポリシーファイルのディレクトリ
         run: |
           echo "DEBUG: Starting app and reading MD files"
-          echo "DEBUG: Policy directory contents:"
-          find policy -name "*.md" -type f | head -10 || echo "No MD files found"
+          echo "DEBUG: Policy directory contents (using $POLICY_DIR):"
+          find $POLICY_DIR -name "*.md" -type f | head -10 || echo "No MD files found"
           
           echo "DEBUG: OPENAI_API_KEY check: ${{ env.OPENAI_API_KEY != '' }}"
           
-          # Simulate vector store creation
+          # Simulate vector store creation with source-dir option
           if [ -f "scripts/upload.ts" ]; then
-            echo "DEBUG: Found upload.ts, would run: bunx tsx scripts/upload.ts"
-            # bunx tsx scripts/upload.ts
+            echo "DEBUG: Found upload.ts, would run: bunx tsx scripts/upload.ts --source-dir=\"$POLICY_DIR\""
+            # bunx tsx scripts/upload.ts --source-dir="$POLICY_DIR"
             echo "DEBUG: Vector Store creation - OK (simulated)"
           else
             echo "DEBUG: upload.ts not found - creating placeholder"
@@ -66,7 +73,7 @@ jobs:
       - name: Simulate Secret Manager Update
         run: |
           echo "DEBUG: Would update Secret Manager with ID: $NEW_VECTOR_STORE_ID"
-          echo "DEBUG: Command would be: gcloud secrets versions add VECTOR_STORE_ID --data-file=-"
+          echo "DEBUG: Command would be: gcloud secrets versions add $VECTOR_STORE_SECRET --data-file=-"
           echo "DEBUG: Secret Manager update - OK (simulated)"
       
       - name: Simulate old Vector Store deletion
@@ -74,18 +81,22 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "DEBUG: Would delete old Vector Store"
-          echo "DEBUG: Would fetch old ID from Secret Manager backup"
+          echo "DEBUG: Would fetch old ID from Secret Manager backup: $VECTOR_STORE_BACKUP_SECRET"
           echo "DEBUG: Would call OpenAI API to delete old store"
           echo "DEBUG: Old Vector Store deletion - OK (simulated)"
       
       - name: Notify success
-        if: success()
+        if: success() && vars.SLACK_NOTIFICATIONS == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           echo "DEBUG: Would notify Slack of success"
           echo "DEBUG: Vector Store updated successfully: $NEW_VECTOR_STORE_ID"
       
       - name: Notify failure
-        if: failure()
+        if: failure() && vars.SLACK_NOTIFICATIONS == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           echo "DEBUG: Would notify Slack of failure"
           echo "DEBUG: Vector Store update failed. Check workflow logs."

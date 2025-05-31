@@ -2,6 +2,13 @@
 
 console.log("DEBUG: Starting upload.ts");
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+const sourceDirFlag = args.find((arg) => arg.startsWith('--source-dir='));
+const sourceDir = sourceDirFlag ? sourceDirFlag.split('=')[1] : 'policy';
+
+console.log(`DEBUG: Using source directory: ${sourceDir}`);
+
 // Check environment variables
 const openaiKey = process.env.OPENAI_API_KEY;
 console.log(`DEBUG: OPENAI_API_KEY present: ${!!openaiKey}`);
@@ -33,11 +40,11 @@ function findMarkdownFiles(dir: string): string[] {
   return files;
 }
 
-// Look for policy documents
-const policyDir = './policy';
+// Look for policy documents using specified source directory
+const policyDir = `./${sourceDir}`;
 const markdownFiles = findMarkdownFiles(policyDir);
 
-console.log(`DEBUG: Found ${markdownFiles.length} markdown files:`);
+console.log(`DEBUG: Found ${markdownFiles.length} markdown files in ${policyDir}:`);
 markdownFiles.forEach(file => console.log(`  - ${file}`));
 
 if (markdownFiles.length > 0) {

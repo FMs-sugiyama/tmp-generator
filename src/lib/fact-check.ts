@@ -20,6 +20,9 @@ async function getVectorStoreId(): Promise<string> {
     console.log("DEBUG: Production mode - would fetch from Secret Manager");
     console.log("DEBUG: GOOGLE_CLOUD_PROJECT check:", !!process.env.GOOGLE_CLOUD_PROJECT);
     
+    const secretName = process.env.VECTOR_STORE_SECRET || 'VECTOR_STORE_ID';
+    console.log(`DEBUG: Using Secret Manager secret: ${secretName}`);
+    
     // Simulate Secret Manager access
     const envId = process.env.VECTOR_STORE_ID;
     if (envId) {
