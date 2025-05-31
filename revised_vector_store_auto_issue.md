@@ -67,7 +67,7 @@ on:
   repository_dispatch:
     types: [embed]
   schedule:
-    - cron: ${{ vars.REBUILD_SCHEDULE || '0 */6 * * *' }} # 設定可能なスケジュール
+    - cron: '0 */6 * * *' # フォールバック（GitHub Actions制限により変数化不可）
   workflow_dispatch:
 
 env:
