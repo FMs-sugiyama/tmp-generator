@@ -41,7 +41,7 @@ curl -X POST \
 - `POLICY_DIR`: ポリシーファイルが格納されているディレクトリ名（デフォルト: `policy`）
 - `VECTOR_STORE_SECRET`: Secret Managerのシークレット名（デフォルト: `VECTOR_STORE_ID`）
 - `VECTOR_STORE_BACKUP_SECRET`: バックアップシークレット名（デフォルト: `VECTOR_STORE_ID-backup`）
-- `REBUILD_SCHEDULE`: 自動リビルドのCronスケジュール（デフォルト: `0 */6 * * *`）
+- ~~`REBUILD_SCHEDULE`: 自動リビルドのCronスケジュール~~ ※GitHub Actions制限により変数化不可
 - `SLACK_NOTIFICATIONS`: Slack通知の有効/無効（`true`/`false`、デフォルト: 無効）
 
 #### Repository Secrets（リポジトリシークレット）:
@@ -83,8 +83,8 @@ Value: VECTOR_STORE_ID
 Name: VECTOR_STORE_BACKUP_SECRET
 Value: VECTOR_STORE_ID-backup
 
-Name: REBUILD_SCHEDULE
-Value: 0 */6 * * *
+# REBUILD_SCHEDULE は GitHub Actions の制限により設定不可
+# スケジュール変更は .github/workflows/embed.yml を直接編集
 
 Name: SLACK_NOTIFICATIONS
 Value: false
@@ -134,7 +134,7 @@ Repository Variables:
 POLICY_REPO=your-org/your-policies
 POLICY_BRANCH=develop
 POLICY_DIR=documents
-REBUILD_SCHEDULE=0 */12 * * *
+# REBUILD_SCHEDULE は変数化不可（ワークフローファイル直接編集が必要）
 SLACK_NOTIFICATIONS=true
 
 Repository Secrets:
@@ -182,3 +182,6 @@ A: はい。`SLACK_NOTIFICATIONS`変数を設定しないか、`false`に設定�
 
 ### Q: 設定を変更した後、何か再起動が必要ですか？
 A: いいえ。設定変更は次回のワークフロー実行時に自動的に反映されます。
+
+### Q: 自動実行のスケジュールを変更できますか？
+A: GitHub Actionsの制限により、スケジュールは変数化できません。変更するには`.github/workflows/embed.yml`ファイルの`cron`行を直接編集してください。
